@@ -3,25 +3,33 @@ openpyxl
 streamlit
 plotly
 
-# ========================================
-# PASSO A PASSO PARA RODAR O DASHBOARD
-# ========================================
+# =============================================
+# PASSO A PASSO PARA RODAR EM OUTRA MÁQUINA
+# =============================================
 #
-# 1. Abra o terminal (PowerShell) na pasta do projeto:
-#    cd d:\Desktop\TESTE-ANALISTA-SBF\excel_pandas
+# 1. Clone o repositório:
+#    git clone https://github.com/jpfbarri/SBF-Dashboard.git
 #
-# 2. Ative o ambiente virtual:
-#    & .venv\Scripts\Activate.ps1
+# 2. Abra o terminal na pasta do projeto:
+#    cd SBF-Dashboard/excel_pandas
 #
-# 3. Instale as dependências (só precisa fazer 1 vez):
+# 3. Crie o ambiente virtual (só precisa fazer 1 vez):
+#    python -m venv .venv
+#
+# 4. Ative o ambiente virtual:
+#    Windows (PowerShell): & .venv\Scripts\Activate.ps1
+#    Windows (CMD):        .venv\Scripts\activate.bat
+#    Linux/Mac:            source .venv/bin/activate
+#
+# 5. Instale as dependências (só precisa fazer 1 vez):
 #    pip install -r requirements.txt
 #
-# 4. Rode o dashboard:
+# 6. Rode o dashboard:
 #    streamlit run dashboard.py
 #
-# 5. Acesse no navegador:
+# 7. Acesse no navegador:
 #    http://localhost:8501
 #
-# 6. Para parar o dashboard:
+# 8. Para parar o dashboard:
 #    Pressione Ctrl + C no terminal
-# ========================================
+# =============================================
