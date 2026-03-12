@@ -494,10 +494,10 @@ with c3b:
     top10["Exibicao_Chegada"] = top10.apply(format_date_exec, axis=1)
 
     def risk_row_class(row):
-        # Vermelho: Ruptura com atraso logístico (Problema que exige ação)
-        if row["Estoque_Atual"] == 0 and row["Status_Entrega"] in ["Atrasado", "Critico"]:
+        # Vermelho: Risco de Visibilidade (Não sabemos quando chega)
+        if row["Estoque_Atual"] == 0 and pd.isna(row["Data_Prevista_Chegada"]):
             return "row-danger"
-        # Amarelo/Laranja: Ruptura no prazo (Status de alerta/monitoramento)
+        # Amarelo/Laranja: Ruptura com data (Estamos monitorando, mesmo se atrasado)
         if row["Estoque_Atual"] == 0:
             return "row-warning"
         return ""
