@@ -21,10 +21,10 @@ BG_CARD = "#1A1D27"
 BG_SURFACE = "#242733"
 BORDA = "#2D3040"
 TEXTO = "#EAEDF3"
-TEXTO2 = "#8B8FA3"
-VERDE = "#005F1F"
-LIMA = "#9EFE06"
-VERDE_MEDIO = "#2D8B46"
+TEXTO2 = "#A0A4B8"
+VERDE = "#1B6B3A"
+LIMA = "#7CCB5F"
+VERDE_MEDIO = "#2B7A4B"
 VERMELHO = "#EF4444"
 AMARELO = "#F59E0B"
 BRANCO = "#FFFFFF"
@@ -85,7 +85,7 @@ html, body, .stApp {{
     margin-bottom: 4px;
 }}
 .kpi .lbl {{
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     font-weight: 500;
     color: {TEXTO2};
     text-transform: uppercase;
@@ -101,7 +101,7 @@ html, body, .stApp {{
 
 /* Section */
 .sec-title {{
-    font-size: 0.95rem;
+    font-size: 1.0rem;
     font-weight: 600;
     color: {TEXTO};
     margin: 28px 0 16px 0;
@@ -138,10 +138,10 @@ html, body, .stApp {{
     background: {BG_CARD};
     border: 1px solid {BORDA};
     border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 0.82rem;
+    padding: 14px 18px;
+    font-size: 0.88rem;
     color: {TEXTO2};
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }}
 .insight strong {{ color: {TEXTO}; }}
 
@@ -151,26 +151,26 @@ html, body, .stApp {{
     border: 1px solid {BORDA};
     border-left: 3px solid {LIMA};
     border-radius: 0 8px 8px 0;
-    padding: 14px 18px;
-    margin: 12px 0 24px 0;
-    font-size: 0.82rem;
-    line-height: 1.6;
+    padding: 18px 22px;
+    margin: 16px 0 28px 0;
+    font-size: 0.92rem;
+    line-height: 1.7;
     color: {TEXTO2};
 }}
 .exec-insight strong {{ color: {TEXTO}; }}
 .exec-insight .ei-label {{
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.8px;
     color: {LIMA};
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }}
 
 /* Section subtitle = business question */
 .sec-question {{
-    font-size: 0.78rem;
-    color: {TEXTO2};
+    font-size: 0.84rem;
+    color: #B0B4C8;
     margin: -12px 0 14px 0;
     font-style: italic;
 }}
@@ -191,7 +191,7 @@ html, body, .stApp {{
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    font-size: 0.68rem;
+    font-size: 0.73rem;
     padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid {BORDA};
@@ -199,7 +199,7 @@ html, body, .stApp {{
 .dark-table tbody td {{
     background: {BG_CARD};
     color: {TEXTO};
-    padding: 8px 12px;
+    padding: 9px 12px;
     border-bottom: 1px solid {BORDA};
 }}
 .dark-table tbody tr:last-child td {{
@@ -245,7 +245,7 @@ PL = dict(
 )
 
 def ax(title="", **kw):
-    return dict(showgrid=True, gridcolor="#1E2130", title=title, **kw)
+    return dict(showgrid=True, gridcolor="#252840", title=title, **kw)
 
 
 def html_table(df, cols, headers=None, fmt=None, row_class_fn=None, max_height=None):
@@ -303,7 +303,7 @@ st.markdown(
     f'<div class="dash-header">'
     f'<span class="logo">SBF</span>'
     f'<span class="title">Dashboard de Inventário</span>'
-    f'<span class="badge">Atualizado em {datetime.now().strftime("%d/%m/%Y %H:%M")}</span>'
+    f'<span class="badge" title="Data/Hora da última extração da base do ERP">Atualizado em 12/03/2026 às 01:46</span>'
     f'</div>',
     unsafe_allow_html=True,
 )
@@ -337,56 +337,23 @@ saude_pct = df_f["Saudavel"].sum() / max(len(df_f), 1) * 100
 cob_media = df_f["Cobertura_Estoque_Dias"].mean()
 cob_cor = VERMELHO if cob_media < 5 else (AMARELO if cob_media < 10 else "#22C55E")
 
-def kpi(val, label, dot_color=None):
+def kpi(val, label, dot_color=None, tooltip=""):
     dot = f'<span class="dot" style="background:{dot_color}"></span>' if dot_color else ""
-    return f'<div class="kpi"><div class="val">{val}</div><div class="lbl">{dot}{label}</div></div>'
+    return f'<div class="kpi" title="{tooltip}"><div class="val">{val}</div><div class="lbl">{dot}{label}</div></div>'
 
-k1, k2, k3, k4, k5 = st.columns(5)
+k1, k2, k3, k4 = st.columns(4)
 with k1:
-    st.markdown(kpi(f"R$ {valor_total:,.0f}", "Valor Total em Estoque"), unsafe_allow_html=True)
+    st.markdown(kpi(f"R$ {valor_total:,.0f}", "Valor Total em Estoque", tooltip="Soma de (Estoque Atual * Custo Unitário) dos itens filtrados"), unsafe_allow_html=True)
 with k2:
-    st.markdown(kpi(f"{saude_pct:.0f}%", "Índice de Saúde", "#22C55E" if saude_pct >= 60 else AMARELO), unsafe_allow_html=True)
+    st.markdown(kpi(str(ruptura), "Produtos em Ruptura", VERMELHO, tooltip="Itens onde o Estoque Atual está estritamente abaixo do Estoque Mínimo"), unsafe_allow_html=True)
 with k3:
-    st.markdown(kpi(str(ruptura), "Produtos em Ruptura", VERMELHO), unsafe_allow_html=True)
+    st.markdown(kpi(str(estoque_zero), "Estoque Zerado", VERMELHO, tooltip="Itens com 0 unidades físicas disponíveis no momento da extração"), unsafe_allow_html=True)
 with k4:
-    st.markdown(kpi(str(estoque_zero), "Estoque Zerado", VERMELHO), unsafe_allow_html=True)
-with k5:
-    st.markdown(kpi(f"{cob_media:.1f} dias", "Cobertura Média", cob_cor), unsafe_allow_html=True)
-
-
-# ── SAÚDE POR CATEGORIA ────────────────────────
-st.markdown('<div class="sec-title">Saúde por Categoria</div>', unsafe_allow_html=True)
-
-cat_health = df_f.groupby("Categoria").agg(
-    Total=("ID_Produto", "count"),
-    Saudaveis=("Saudavel", "sum"),
-    Em_Ruptura=("Abaixo_Minimo", "sum"),
-    Estoque_Zero=("Estoque_Atual", lambda x: (x == 0).sum()),
-).round(0)
-cat_health["Pct"] = (cat_health["Saudaveis"] / cat_health["Total"] * 100).round(0)
-
-cc1, cc2, cc3 = st.columns(3)
-for col_st, (cat, row) in zip([cc1, cc2, cc3], cat_health.iterrows()):
-    pct = row["Pct"]
-    cor = "#22C55E" if pct >= 70 else (AMARELO if pct >= 40 else VERMELHO)
-    with col_st:
-        st.markdown(
-            f'<div class="cat-card">'
-            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-            f'<div>'
-            f'<div class="name">{cat}</div>'
-            f'<div class="stat">{int(row["Total"])} produtos<br>'
-            f'{int(row["Em_Ruptura"])} em ruptura · {int(row["Estoque_Zero"])} sem estoque</div>'
-            f'</div>'
-            f'<div class="pct" style="color:{cor}">{pct:.0f}%</div>'
-            f'</div></div>',
-            unsafe_allow_html=True,
-        )
-
+    st.markdown(kpi(f"{cob_media:.1f} dias", "Cobertura Média", cob_cor, tooltip="Média de dias que o estoque atual suporta considerando a Venda Média Diária (Top-Down)"), unsafe_allow_html=True)
 
 # ── VALOR POR CATEGORIA + ESTOQUE vs MÍNIMO ────
 st.markdown('<div class="sec-title">Distribuição de Capital por Categoria</div>', unsafe_allow_html=True)
-st.markdown('<div class="sec-question">Quais categorias concentram o maior capital investido e como ele se compara com a demanda?</div>', unsafe_allow_html=True)
+st.markdown('<div class="sec-question">Resumir o Valor Total em Estoque e a Venda Média por Categoria.</div>', unsafe_allow_html=True)
 
 tabela_cat = df_f.groupby("Categoria").agg(
     Qtd_Produtos=("ID_Produto", "count"),
@@ -394,40 +361,54 @@ tabela_cat = df_f.groupby("Categoria").agg(
     Custo_Medio=("Custo_Unitario", "mean"),
     Valor_Total=("Valor_Total_Estoque", "sum"),
     Venda_Media=("Venda_Media_Diaria", "mean"),
-).round(2)
-tabela_cat["Participação (%)"] = (tabela_cat["Valor_Total"] / tabela_cat["Valor_Total"].sum() * 100).round(1)
+)
+tabela_cat["Participação (%)"] = tabela_cat["Valor_Total"] / tabela_cat["Valor_Total"].sum() * 100
 
 cat_estoque = df_f.groupby("Categoria").agg(
     Estoque_Atual=("Estoque_Atual", "sum"),
     Estoque_Minimo=("Estoque_Minimo", "sum"),
 )
 
-c2a, c2b = st.columns(2)
+c2a, c2b = st.columns([1.3, 0.7])
 with c2a:
-    fig = go.Figure(go.Bar(
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
         x=tabela_cat.index, y=tabela_cat["Valor_Total"],
-        marker_color=[VERDE, LIMA, VERDE_MEDIO][:len(tabela_cat)],
-        text=[f"R$ {v:,.0f}" for v in tabela_cat["Valor_Total"]],
-        textposition="auto", textfont=dict(color=BRANCO, size=11),
+        name="Valor em Estoque (R$)", marker_color=LIMA,
+        text=[f"R$ {v/1000:,.0f}k" for v in tabela_cat["Valor_Total"]],
+        textposition="auto", textfont=dict(color=BRANCO, size=11), yaxis="y1"
     ))
-    fig.update_layout(title=dict(text="Valor Total em Estoque", font=dict(size=14, color=TEXTO2)),
-                      **PL, yaxis=ax("R$"), xaxis=dict(title=""), height=420)
+    fig.add_trace(go.Scatter(
+        x=tabela_cat.index, y=tabela_cat["Venda_Media"],
+        name="Venda Média (Giro)", mode="lines+markers",
+        line=dict(color=AMARELO, width=2),
+        marker=dict(size=8, color=AMARELO), yaxis="y2",
+        hovertemplate="<b>%{x}</b><br>Venda Média: %{y:.1f}<extra></extra>"
+    ))
+    max_valor = tabela_cat["Valor_Total"].max()
+    max_venda = tabela_cat["Venda_Media"].max()
+    
+    fig.update_layout(
+        title=dict(text="Valor em Estoque vs Venda Média", font=dict(size=14, color=TEXTO2)),
+        **PL, height=420,
+        yaxis=dict(title="Valor Total (R$)", showgrid=True, gridcolor="#252840", range=[0, max_valor * 1.15]),
+        yaxis2=dict(
+            title=dict(text="Venda Média Diária", font=dict(color=AMARELO)), 
+            overlaying="y", side="right", showgrid=False, tickfont=dict(color=AMARELO),
+            range=[0, max_venda * 1.45]
+        ),
+        legend=dict(orientation="h", y=1.05, x=0, font=dict(size=11, color=TEXTO2))
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 with c2b:
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(x=cat_estoque.index, y=cat_estoque["Estoque_Atual"],
-                          name="Atual", marker_color=LIMA,
-                          text=[f"{v:,.0f}" for v in cat_estoque["Estoque_Atual"]],
-                          textposition="auto", textfont=dict(color=BRANCO, size=11)))
-    fig2.add_trace(go.Bar(x=cat_estoque.index, y=cat_estoque["Estoque_Minimo"],
-                          name="Mínimo", marker_color=VERMELHO, opacity=0.6,
-                          text=[f"{v:,.0f}" for v in cat_estoque["Estoque_Minimo"]],
-                          textposition="auto", textfont=dict(color=BRANCO, size=11)))
-    fig2.update_layout(title=dict(text="Estoque Atual vs Mínimo", font=dict(size=14, color=TEXTO2)),
-                       **PL, yaxis=ax("Unidades"), xaxis=dict(title=""), barmode="group", height=420,
-                       legend=dict(orientation="h", y=1.05, x=0, font=dict(size=11, color=TEXTO2)))
-    st.plotly_chart(fig2, use_container_width=True)
+    st.markdown(html_table(
+        tabela_cat.reset_index(),
+        cols=["Categoria", "Valor_Total", "Venda_Media"],
+        headers=["Categoria", "Valor Total (R$)", "Venda Média"],
+        fmt={"Valor_Total": lambda v: f"R$ {v:,.0f}", "Venda_Media": lambda v: f"{v:.1f}"},
+        max_height=380,
+    ), unsafe_allow_html=True)
 
 # Insight executivo — Capital por Categoria
 cat_maior = tabela_cat["Valor_Total"].idxmax()
@@ -462,33 +443,19 @@ st.markdown('<div class="sec-question">Quais produtos apresentam maior risco de 
 c3a, c3b = st.columns([1.2, 0.8])
 
 with c3a:
-    df_sc = df_f[df_f["Venda_Media_Diaria"] > 0].copy()
-    df_sc["Sz"] = df_sc["Valor_Total_Estoque"].clip(lower=100)
-
-    fig3 = go.Figure()
-    fig3.add_vrect(x0=0, x1=2, fillcolor=VERMELHO, opacity=0.06, layer="below", line_width=0)
-    fig3.add_vrect(x0=2, x1=5, fillcolor=AMARELO, opacity=0.04, layer="below", line_width=0)
-
-    for sv, cor in STATUS_COR.items():
-        sub = df_sc[df_sc["Status_Entrega"] == sv]
-        if len(sub) == 0:
-            continue
-        fig3.add_trace(go.Scatter(
-            x=sub["Cobertura_Estoque_Dias"], y=sub["Venda_Media_Diaria"], mode="markers",
-            marker=dict(size=sub["Sz"].apply(lambda v: max(7, min(26, v / 600))),
-                        color=cor, line=dict(width=1, color=BG_CARD), opacity=0.8),
-            name=sv,
-            text=[f"<b>{r['Nome_Produto']}</b><br>Cobertura: {r['Cobertura_Estoque_Dias']:.1f}d<br>"
-                  f"Venda/dia: {r['Venda_Media_Diaria']:.0f}<br>Estoque: {r['Estoque_Atual']} (mín: {r['Estoque_Minimo']})"
-                  for _, r in sub.iterrows()],
-            hovertemplate="%{text}<extra></extra>",
-        ))
-
-    fig3.add_vline(x=2, line_color=VERMELHO, line_dash="dot", line_width=1)
-    fig3.add_vline(x=5, line_color=AMARELO, line_dash="dot", line_width=1)
-    fig3.update_layout(title=dict(text="Cobertura vs Demanda", font=dict(size=14, color=TEXTO2)),
-                       **PL, xaxis=ax("Cobertura (dias)"), yaxis=ax("Venda Média Diária"),
-                       height=420, legend=dict(orientation="h", y=1.05, x=0, font=dict(size=11, color=TEXTO2)))
+    top10_base = df_f.sort_values(["Cobertura_Estoque_Dias", "Venda_Media_Diaria"], ascending=[True, False]).head(10)
+    
+    fig3 = go.Figure(go.Bar(
+        x=top10_base["Nome_Produto"], y=top10_base["Cobertura_Estoque_Dias"],
+        marker_color=[VERMELHO if c < 2 else AMARELO for c in top10_base["Cobertura_Estoque_Dias"]],
+        text=[f"{v:.1f}d" for v in top10_base["Cobertura_Estoque_Dias"]],
+        textposition="outside", textfont=dict(color=TEXTO, size=11),
+    ))
+    fig3.add_hline(y=2, line_color=VERMELHO, line_dash="dot", line_width=1.5, annotation_text="Corte Crítico (2d)", annotation_font_color=VERMELHO)
+    fig3.update_layout(title=dict(text="Top 10 Produtos em Risco", font=dict(size=14, color=TEXTO2)),
+                       **PL, xaxis=dict(title="", showgrid=False, tickangle=-45), yaxis=ax("Cobertura (dias)"),
+                       height=420)
+    fig3.update_layout(margin=dict(l=50, r=40, t=36, b=100))
     st.plotly_chart(fig3, use_container_width=True)
 
 with c3b:
@@ -504,7 +471,7 @@ with c3b:
     )
 
     # Top 10 most critical — dark themed table
-    top10 = df_f.nsmallest(10, "Cobertura_Estoque_Dias")[
+    top10 = top10_base.copy()[
         ["Nome_Produto", "Categoria", "Estoque_Atual", "Estoque_Minimo",
          "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega"]
     ].reset_index(drop=True)
@@ -558,74 +525,54 @@ with c4a:
     total_val = df_p["Valor_Total_Estoque"].sum()
     df_p["Acum"] = (df_p["Valor_Total_Estoque"].cumsum() / total_val * 100).round(1)
 
-    n_show = min(20, len(df_p))
-    ds = df_p.head(n_show)
-    idx_80 = df_p[df_p["Acum"] >= 80].index[0] if len(df_p[df_p["Acum"] >= 80]) > 0 else len(df_p) - 1
-    n_80 = idx_80 + 1
-
-    fig4 = go.Figure()
-    fig4.add_trace(go.Bar(
-        x=ds["Nome_Produto"], y=ds["Valor_Total_Estoque"],
-        marker_color=[LIMA if i <= idx_80 else "#3A3D4A" for i in range(n_show)],
-        text=[f"R$ {v:,.0f}" for v in ds["Valor_Total_Estoque"]],
-        textposition="auto", textfont=dict(color=BRANCO, size=9),
-        name="Valor", yaxis="y",
+    curva_a = df_p[df_p["Acum"] <= 20].copy()
+    if len(curva_a) == 0 and len(df_p) > 0:
+        curva_a = df_p.head(1)
+    
+    fig4 = go.Figure(go.Bar(
+        y=curva_a["Nome_Produto"],
+        x=curva_a["Valor_Total_Estoque"],
+        orientation="h",
+        marker_color=LIMA,
+        text=[f"R$ {v:,.0f}" for v in curva_a["Valor_Total_Estoque"]],
+        textposition="auto", textfont=dict(color=BRANCO, size=11)
     ))
-    fig4.add_trace(go.Scatter(
-        x=ds["Nome_Produto"], y=ds["Acum"],
-        mode="lines+markers", line=dict(color=AMARELO, width=2),
-        marker=dict(size=4, color=AMARELO), name="% Acumulado", yaxis="y2",
-    ))
-    fig4.add_hline(y=80, line_color=VERMELHO, line_dash="dash", line_width=1,
-                   annotation_text="80%", annotation_font_color=VERMELHO,
-                   annotation_font_size=10, annotation_position="right", yref="y2")
     fig4.update_layout(
-        title=dict(text=f"Top {n_show} Produtos por Valor", font=dict(size=14, color=TEXTO2)),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=TEXTO2, family="Inter", size=12),
-        yaxis=dict(title="Valor (R$)", showgrid=True, gridcolor="#1E2130"),
-        yaxis2=dict(title=dict(text="% Acumulado", font=dict(color=AMARELO)),
-                    overlaying="y", side="right", showgrid=False, range=[0, 105],
-                    ticksuffix="%", tickfont=dict(color=AMARELO)),
-        xaxis=dict(title="", tickangle=30), height=420,
-        margin=dict(t=36, b=100, l=50, r=50), bargap=0.3,
-        legend=dict(orientation="h", y=1.05, x=0, font=dict(size=11, color=TEXTO2)),
+        title=dict(text=f"Produtos que compõem os 20% mais caros", font=dict(size=14, color=TEXTO2)),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=TEXTO2, family="Inter", size=12),
+        yaxis=dict(title="", autorange="reversed", showgrid=False), xaxis=ax("Valor (R$)"),
+        height=420, margin=dict(t=36, b=20, l=150, r=20)
     )
     st.plotly_chart(fig4, use_container_width=True)
 
 with c4b:
-    v80 = df_p.head(n_80)["Valor_Total_Estoque"].sum()
-    pct_skus = n_80 / len(df_p) * 100
+    v20 = curva_a["Valor_Total_Estoque"].sum()
+    pct_skus = len(curva_a) / len(df_p) * 100
     st.markdown(
         f'<div class="insight" style="margin-top:0">'
-        f'<strong style="font-size:1.5rem;color:{TEXTO}">{n_80}</strong> '
-        f'<span>produtos ({pct_skus:.0f}% dos SKUs) concentram <strong>80%</strong> do valor total</span><br><br>'
-        f'<span style="color:{TEXTO};font-weight:600">R$ {v80:,.0f}</span> '
+        f'<strong style="font-size:1.5rem;color:{LIMA}">{len(curva_a)}</strong> '
+        f'<span>produtos (só {pct_skus:.1f}% do portfólio) sozinhos imobilizam <strong>20%</strong> de todo o capital investido</span><br><br>'
+        f'<span style="color:{TEXTO};font-weight:600">R$ {v20:,.0f}</span> '
         f'de R$ {total_val:,.0f}</div>',
         unsafe_allow_html=True,
     )
 
-    tp = df_p.head(n_80)[["Nome_Produto", "Valor_Total_Estoque", "Acum"]].reset_index(drop=True)
+    tp = curva_a[["Nome_Produto", "Valor_Total_Estoque", "Acum"]].reset_index(drop=True)
     st.markdown(html_table(
         tp,
-        cols=["Nome_Produto", "Valor_Total_Estoque", "Acum"],
-        headers=["Produto", "Valor (R$)", "Acum (%)"],
-        fmt={
-            "Valor_Total_Estoque": lambda v: f"R$ {v:,.0f}",
-            "Acum": lambda v: f"{v:.1f}%",
-        },
+        cols=["Nome_Produto", "Valor_Total_Estoque"],
+        headers=["Produto (Curva A Restrita)", "Valor (R$)"],
+        fmt={"Valor_Total_Estoque": lambda v: f"R$ {v:,.0f}"},
         max_height=300,
     ), unsafe_allow_html=True)
 
-# Insight executivo — Pareto
+# Insight executivo — Concentração Curva A (Top 20% budget)
 top1 = df_p.iloc[0]
 st.markdown(
-    f'<div class="exec-insight"><div class="ei-label">Resumo do Insight</div>'
-    f'Apenas <strong>{n_80} produtos</strong> ({pct_skus:.0f}% dos SKUs) concentram '
-    f'<strong>80% do capital</strong> investido em estoque (R$ {v80:,.0f} de R$ {total_val:,.0f}). '
-    f'O item de maior valor é <strong>{top1["Nome_Produto"]}</strong> (R$ {top1["Valor_Total_Estoque"]:,.0f}). '
-    f'Esses itens exigem monitoramento prioritário, revisão frequente do estoque de segurança '
-    f'e negociação de condições preferenciais com fornecedores.</div>',
+    f'<div class="exec-insight"><div class="ei-label">Resumo do Insight Corporativo</div>'
+    f'Focando na hiper-concentração de capital, identificamos que a "Ponta do Iceberg" compreende apenas <strong>{len(curva_a)} produto(s)</strong> '
+    f'({pct_skus:.1f}% do portfólio), mas que sozinhos retêm pesados <strong>20% de todo o caixa estocado</strong> (R$ {v20:,.0f}). '
+    f'O item líder é <strong>{top1["Nome_Produto"]}</strong>.</div>',
     unsafe_allow_html=True,
 )
 
@@ -640,43 +587,49 @@ c5a, c5b = st.columns(2)
 
 with c5a:
     total_rastr = len(df_f[df_f["Data_Prevista_Chegada"].notna()])
+    df_rastr = df_f[df_f["Data_Prevista_Chegada"].notna()].copy()
+    ref_date = pd.Timestamp("2026-02-15")
+    df_rastr["Periodo_Chegada"] = df_rastr["Data_Prevista_Chegada"].apply(
+        lambda x: "Pós 15/02 (Risco Atraso)" if x > ref_date else "Antes 15/02 (Seguro)"
+    )
+    
     st.markdown(
         f'<div class="insight">'
-        f'<strong>{len(chegada)}</strong> produtos com chegada após 15/02/2026 '
-        f'({len(chegada)}/{total_rastr} rastreáveis — '
-        f'<strong>{len(chegada)/max(total_rastr,1)*100:.0f}%</strong>)</div>',
+        f'<strong>{len(chegada)}</strong> de {total_rastr} produtos rastreáveis chegarão apenas '
+        f'<strong style="color:{VERMELHO}">após o deadline de 15/02</strong> '
+        f'({len(chegada)/max(total_rastr,1)*100:.0f}%)</div>',
         unsafe_allow_html=True,
     )
 
-    if len(chegada) > 0:
-        fig5 = go.Figure()
-        for sv, cor in STATUS_COR.items():
-            sub = chegada[chegada["Status_Entrega"] == sv]
-            if len(sub) == 0:
-                continue
-            fig5.add_trace(go.Scatter(
-                x=sub["Data_Prevista_Chegada"], y=sub["Nome_Produto"], mode="markers",
-                marker=dict(size=10, color=cor, line=dict(width=1, color=BG_CARD)),
-                name=sv,
-                text=[f"<b>{r['Nome_Produto']}</b><br>{r['Data_Prevista_Chegada'].strftime('%d/%m/%Y')}<br>"
-                      f"Lead Time: {r['Lead_Time_Fornecedor']}d · {r['Status_Entrega']}"
-                      for _, r in sub.iterrows()],
-                hovertemplate="%{text}<extra></extra>",
-            ))
-
-        ref = datetime(2026, 2, 15)
-        fig5.add_shape(type="line", x0=ref, x1=ref, y0=0, y1=1, yref="paper",
-                       line=dict(color=VERMELHO, dash="dash", width=1))
-        fig5.add_annotation(x=ref, y=1.05, yref="paper", text="15/02/2026",
-                            showarrow=False, font=dict(color=VERMELHO, size=10))
+    if total_rastr > 0:
+        resumo_prazo = df_rastr.groupby("Periodo_Chegada").agg(
+            Valor_Total_Estoque=("Valor_Total_Estoque", "sum"), 
+            ID_Produto=("ID_Produto", "count")
+        ).reset_index()
+        
+        fig5 = go.Figure(go.Pie(
+            labels=resumo_prazo["Periodo_Chegada"], 
+            values=resumo_prazo["ID_Produto"],
+            hole=0.6,
+            marker=dict(colors=[VERMELHO if "Pós" in p else "#4E9A6D" for p in resumo_prazo["Periodo_Chegada"]]),
+            textinfo="value+label",
+            textposition="outside",
+            hovertemplate="<b>%{label}</b><br>%{value} produtos<extra></extra>"
+        ))
+        
         fig5.update_layout(
-            title=dict(text="Timeline de Chegada", font=dict(size=14, color=TEXTO2)),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color=TEXTO2, family="Inter", size=12),
-            xaxis=ax("Data Prevista"), yaxis=dict(title="", autorange="reversed"),
-            height=420, margin=dict(t=36, l=160, b=30, r=20),
-            legend=dict(orientation="h", y=1.05, x=0, font=dict(size=11, color=TEXTO2)),
+            title=dict(text="Produtos por Previsão de Chegada", font=dict(size=14, color=TEXTO2)),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=TEXTO2, family="Inter", size=12),
+            height=380, margin=dict(t=40, l=20, b=20, r=20),
+            showlegend=False
         )
+        
+        total_p_row = resumo_prazo[resumo_prazo["Periodo_Chegada"].str.contains("Pós")]
+        total_p = total_p_row["ID_Produto"].sum() if len(total_p_row) > 0 else 0
+        
+        if total_p > 0:
+            fig5.add_annotation(text=f"Risco de<br>Atraso<br><b>{total_p} itens</b>", x=0.5, y=0.5, showarrow=False, font=dict(size=14, color=VERMELHO))
+            
         st.plotly_chart(fig5, use_container_width=True)
 
 with c5b:
