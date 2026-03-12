@@ -11,7 +11,7 @@ plotly
 #    git clone https://github.com/jpfbarri/SBF-Dashboard.git
 #
 # 2. Abra o terminal na pasta do projeto:
-#    cd SBF-Dashboard/excel_pandas
+#    cd SBF-Dashboard
 #
 # 3. Crie o ambiente virtual (só precisa fazer 1 vez):
 #    python -m venv .venv
