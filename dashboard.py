@@ -286,6 +286,7 @@ def load_data():
     if "Valor_Total_Estoque" not in df.columns:
         df["Valor_Total_Estoque"] = df["Estoque_Atual"] * df["Custo_Unitario"]
     df["Cobertura_Estoque_Dias"] = (df["Estoque_Atual"] / df["Venda_Media_Diaria"]).round(1)
+    df["Venda_Valor_Diario"] = df["Venda_Media_Diaria"] * df["Custo_Unitario"]
     df["Abaixo_Minimo"] = df["Estoque_Atual"] < df["Estoque_Minimo"]
     df_s = df.sort_values("Valor_Total_Estoque", ascending=False)
     df_s["VTE_Acum"] = df_s["Valor_Total_Estoque"].cumsum()
@@ -360,7 +361,8 @@ tabela_cat = df_f.groupby("Categoria").agg(
     Estoque_Total=("Estoque_Atual", "sum"),
     Custo_Medio=("Custo_Unitario", "mean"),
     Valor_Total=("Valor_Total_Estoque", "sum"),
-    Venda_Media=("Venda_Media_Diaria", "mean"),
+    Venda_Media_Unidades=("Venda_Media_Diaria", "sum"),
+    Venda_Total_R=("Venda_Valor_Diario", "sum"),
 )
 tabela_cat["Participação (%)"] = tabela_cat["Valor_Total"] / tabela_cat["Valor_Total"].sum() * 100
 
@@ -379,21 +381,21 @@ with c2a:
         textposition="auto", textfont=dict(color=BRANCO, size=11), yaxis="y1"
     ))
     fig.add_trace(go.Scatter(
-        x=tabela_cat.index, y=tabela_cat["Venda_Media"],
-        name="Venda Média (Giro)", mode="lines+markers",
+        x=tabela_cat.index, y=tabela_cat["Venda_Total_R"],
+        name="Giro Diário (R$)", mode="lines+markers",
         line=dict(color=AMARELO, width=2),
         marker=dict(size=8, color=AMARELO), yaxis="y2",
-        hovertemplate="<b>%{x}</b><br>Venda Média: %{y:.1f}<extra></extra>"
+        hovertemplate="<b>%{x}</b><br>Giro Diário: R$ %{y:,.0f}<extra></extra>"
     ))
     max_valor = tabela_cat["Valor_Total"].max()
-    max_venda = tabela_cat["Venda_Media"].max()
+    max_venda = tabela_cat["Venda_Total_R"].max()
     
     fig.update_layout(
-        title=dict(text="Valor em Estoque vs Venda Média", font=dict(size=14, color=TEXTO2)),
+        title=dict(text="Valor em Estoque vs Giro Diário (R$)", font=dict(size=14, color=TEXTO2)),
         **PL, height=420,
         yaxis=dict(title="Valor Total (R$)", showgrid=True, gridcolor="#252840", range=[0, max_valor * 1.15]),
         yaxis2=dict(
-            title=dict(text="Venda Média Diária", font=dict(color=AMARELO)), 
+            title=dict(text="Giro Diário (R$)", font=dict(color=AMARELO)), 
             overlaying="y", side="right", showgrid=False, tickfont=dict(color=AMARELO),
             range=[0, max_venda * 1.45]
         ),
@@ -404,17 +406,21 @@ with c2a:
 with c2b:
     st.markdown(html_table(
         tabela_cat.reset_index(),
-        cols=["Categoria", "Valor_Total", "Venda_Media"],
-        headers=["Categoria", "Valor Total (R$)", "Venda Média"],
-        fmt={"Valor_Total": lambda v: f"R$ {v:,.0f}", "Venda_Media": lambda v: f"{v:.1f}"},
+        cols=["Categoria", "Valor_Total", "Venda_Media_Unidades", "Venda_Total_R"],
+        headers=["Categoria", "Estoque (R$)", "Venda/Dia (un)", "Giro/Dia (R$)"],
+        fmt={
+            "Valor_Total": lambda v: f"R$ {v:,.0f}", 
+            "Venda_Media_Unidades": lambda v: f"{v:,.0f}",
+            "Venda_Total_R": lambda v: f"R$ {v:,.0f}"
+        },
         max_height=380,
     ), unsafe_allow_html=True)
 
 # Insight executivo — Capital por Categoria
 cat_maior = tabela_cat["Valor_Total"].idxmax()
 cat_maior_pct = tabela_cat.loc[cat_maior, "Participação (%)"]
-cat_maior_venda = tabela_cat.loc[cat_maior, "Venda_Media"]
-cat_menor_venda = tabela_cat["Venda_Media"].idxmin()
+cat_maior_giro = tabela_cat.loc[cat_maior, "Venda_Total_R"]
+cat_menor_giro = tabela_cat["Venda_Total_R"].idxmin()
 cat_deficit = cat_estoque[cat_estoque["Estoque_Atual"] < cat_estoque["Estoque_Minimo"]]
 
 insight_capital = (
@@ -432,8 +438,8 @@ if len(cat_deficit) > 0:
         f'abaixo do mínimo necessário, indicando risco de ruptura agregado. '
     )
 insight_capital += (
-    f'A categoria com menor giro médio é <strong>{cat_menor_venda}</strong> '
-    f'({tabela_cat.loc[cat_menor_venda, "Venda_Media"]:.1f} un/dia), '
+    f'A categoria com menor giro financeiro é <strong>{cat_menor_giro}</strong> '
+    f'(R$ {tabela_cat.loc[cat_menor_giro, "Venda_Total_R"]:,.0f}/dia), '
     f'sugerindo possível sobreestoque relativo.</div>'
 )
 st.markdown(insight_capital, unsafe_allow_html=True)
