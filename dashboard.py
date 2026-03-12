@@ -474,29 +474,41 @@ with c3b:
         unsafe_allow_html=True,
     )
 
-    # Top 10 most critical — dark themed table
-    top10 = top10_base.copy()[
-        ["Nome_Produto", "Categoria", "Estoque_Atual", "Estoque_Minimo",
-         "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega", "Data_Prevista_Chegada"]
-    ].reset_index(drop=True)
+    # Preparação dos dados para visão executiva
+    top10 = top10_base.copy()
+    top10["Impacto_Dia"] = top10["Venda_Media_Diaria"] * top10["Custo_Unitario"]
+    
+    def situacao_exec(row):
+        if row["Estoque_Atual"] == 0:
+            return "RUPTURA"
+        return "ESTOQUE CRÍTICO"
+    
+    top10["Situacao_Atual"] = top10.apply(situacao_exec, axis=1)
+
+    def format_date_exec(row):
+        if pd.notna(row["Data_Prevista_Chegada"]):
+            return row["Data_Prevista_Chegada"].strftime("%d/%m")
+        return "Sem previsão"
+    
+    # Pré-formatamos a coluna
+    top10["Exibicao_Chegada"] = top10.apply(format_date_exec, axis=1)
 
     def risk_row_class(row):
-        # Vermelho: Risco real de falta (Atrasado ou Crítico)
-        if row["Status_Entrega"] in ["Atrasado", "Critico"]:
+        # Vermelho: Ruptura com atraso logístico (Problema que exige ação)
+        if row["Estoque_Atual"] == 0 and row["Status_Entrega"] in ["Atrasado", "Critico"]:
             return "row-danger"
-        # Amarelo: Estoque baixo, mas reposição está No Prazo (Monitorar)
-        elif row["Status_Entrega"] == "No Prazo":
+        # Amarelo/Laranja: Ruptura no prazo (Status de alerta/monitoramento)
+        if row["Estoque_Atual"] == 0:
             return "row-warning"
         return ""
 
     st.markdown(html_table(
         top10,
-        cols=["Nome_Produto", "Estoque_Atual", "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega", "Data_Prevista_Chegada"],
-        headers=["Produto", "Atual", "Venda/dia", "Cobert. (d)", "Situação Reposição", "Prev. Chegada"],
+        cols=["Nome_Produto", "Venda_Media_Diaria", "Impacto_Dia", "Situacao_Atual", "Exibicao_Chegada"],
+        headers=["Produto", "Venda/dia", "Impacto/Dia", "Situação Atual", "Prev. Chegada"],
         fmt={
-            "Cobertura_Estoque_Dias": lambda v: f"{v:.1f}", 
-            "Venda_Media_Diaria": lambda v: f"{v:.0f}",
-            "Data_Prevista_Chegada": lambda x: x.strftime("%d/%m") if pd.notna(x) else "—"
+            "Venda_Media_Diaria": lambda v: f"{v:.0f} un",
+            "Impacto_Dia": lambda v: f"R$ {v:,.0f}"
         },
         row_class_fn=risk_row_class,
         max_height=360,
@@ -505,8 +517,8 @@ with c3b:
 # Insight executivo — Risco de Ruptura
 if len(top10) > 0:
     pior = top10.iloc[0]
-    pior_cob = pior["Cobertura_Estoque_Dias"]
     pior_nome = pior["Nome_Produto"]
+    em_ruptura = len(top10[top10["Estoque_Atual"] == 0])
     # Cálculo do custo da demanda perdida por dia (Venda Média x Custo)
     venda_risco_diario = (top10_base["Venda_Media_Diaria"] * top10_base["Custo_Unitario"]).sum()
     cats_risco = top10["Categoria"].value_counts()
@@ -514,11 +526,10 @@ if len(top10) > 0:
 
     st.markdown(
         f'<div class="exec-insight"><div class="ei-label">Prioridade de Ação — Top 10</div>'
-        f'Focando nos 10 itens de maior risco, identificamos que <strong>{criticos}</strong> operam com cobertura crítica (&lt; 2 dias), '
-        f'exigindo intervenção imediata para evitar ruptura prolongada. '
-        f'O item mais sensível é <strong>{pior_nome}</strong> ({pior_cob:.1f}d). '
-        f'O <strong>impacto diário (custo)</strong> por falta de estoque desses 10 itens soma <strong>R$ {venda_risco_diario:,.0f}</strong>. '
-        f'A categoria <strong>{cat_mais_risco}</strong> concentra a maior parte dessa urgência operacional.</div>',
+        f'A análise dos 10 itens de maior urgência revela que <strong>{em_ruptura}</strong> já se encontram em <strong>RUPTURA</strong>, '
+        f'interrompendo o ciclo de vendas e atendimento. O caso mais grave é <strong>{pior_nome}</strong>. '
+        f'Esta indisponibilidade acumula um <strong>prejuízo diário estimado em R$ {venda_risco_diario:,.0f}</strong> (custo). '
+        f'A categoria <strong>{cat_mais_risco}</strong> concentra a maior parte desta perda de receita potencial.</div>',
         unsafe_allow_html=True,
     )
 
