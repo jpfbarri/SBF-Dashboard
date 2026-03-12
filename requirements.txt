@@ -1,8 +1,8 @@
 pandas
 openpyxl
-streamlit
+streamlit>=1.40.0
 plotly
-altair<5
+altair
 
 # =============================================
 # PASSO A PASSO PARA RODAR EM OUTRA MÁQUINA
