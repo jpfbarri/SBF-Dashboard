@@ -423,9 +423,12 @@ insight_capital = (
     f'do capital investido em estoque (R$ {tabela_cat.loc[cat_maior, "Valor_Total"]:,.0f}). '
 )
 if len(cat_deficit) > 0:
-    cats_deficit = ", ".join(cat_deficit.index.tolist())
+    cats_list = cat_deficit.index.tolist()
+    cats_str = ", ".join(cats_list)
+    prefixo = "As categorias" if len(cats_list) > 1 else "A categoria"
+    verbo = "apresentam" if len(cats_list) > 1 else "apresenta"
     insight_capital += (
-        f'As categorias <strong>{cats_deficit}</strong> apresentam estoque total '
+        f'{prefixo} <strong>{cats_str}</strong> {verbo} estoque total '
         f'abaixo do mínimo necessário, indicando risco de ruptura agregado. '
     )
 insight_capital += (
@@ -459,35 +462,42 @@ with c3a:
     st.plotly_chart(fig3, use_container_width=True)
 
 with c3b:
-    criticos = len(df_f[(df_f["Cobertura_Estoque_Dias"] < 2) & (df_f["Venda_Media_Diaria"] > 0)])
-    atencao = len(df_f[(df_f["Cobertura_Estoque_Dias"] >= 2) & (df_f["Cobertura_Estoque_Dias"] < 5)])
+    # Focando os indicadores especificamente no Top 10 exibido
+    criticos = len(top10_base[(top10_base["Cobertura_Estoque_Dias"] < 2) & (top10_base["Venda_Media_Diaria"] > 0)])
+    atencao = len(top10_base[(top10_base["Cobertura_Estoque_Dias"] >= 2) & (top10_base["Cobertura_Estoque_Dias"] < 5)])
 
     st.markdown(
         f'<div class="insight"><span class="dot" style="background:{VERMELHO}"></span> '
-        f'<strong>{criticos}</strong> produtos em zona crítica — cobertura inferior a 2 dias</div>'
+        f'<strong>{criticos}</strong> dos 10 itens em zona crítica — cobertura < 2 dias</div>'
         f'<div class="insight"><span class="dot" style="background:{AMARELO}"></span> '
-        f'<strong>{atencao}</strong> produtos em atenção — cobertura entre 2 e 5 dias</div>',
+        f'<strong>{atencao}</strong> dos 10 itens em atenção — cobertura entre 2 e 5 dias</div>',
         unsafe_allow_html=True,
     )
 
     # Top 10 most critical — dark themed table
     top10 = top10_base.copy()[
         ["Nome_Produto", "Categoria", "Estoque_Atual", "Estoque_Minimo",
-         "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega"]
+         "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega", "Data_Prevista_Chegada"]
     ].reset_index(drop=True)
 
     def risk_row_class(row):
-        if row["Cobertura_Estoque_Dias"] < 2:
+        # Vermelho: Risco real de falta (Atrasado ou Crítico)
+        if row["Status_Entrega"] in ["Atrasado", "Critico"]:
             return "row-danger"
-        elif row["Cobertura_Estoque_Dias"] < 5:
+        # Amarelo: Estoque baixo, mas reposição está No Prazo (Monitorar)
+        elif row["Status_Entrega"] == "No Prazo":
             return "row-warning"
         return ""
 
     st.markdown(html_table(
         top10,
-        cols=["Nome_Produto", "Estoque_Atual", "Estoque_Minimo", "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega"],
-        headers=["Produto", "Atual", "Mín.", "Venda/dia", "Cobert. (d)", "Status"],
-        fmt={"Cobertura_Estoque_Dias": lambda v: f"{v:.1f}", "Venda_Media_Diaria": lambda v: f"{v:.0f}"},
+        cols=["Nome_Produto", "Estoque_Atual", "Venda_Media_Diaria", "Cobertura_Estoque_Dias", "Status_Entrega", "Data_Prevista_Chegada"],
+        headers=["Produto", "Atual", "Venda/dia", "Cobert. (d)", "Situação Reposição", "Prev. Chegada"],
+        fmt={
+            "Cobertura_Estoque_Dias": lambda v: f"{v:.1f}", 
+            "Venda_Media_Diaria": lambda v: f"{v:.0f}",
+            "Data_Prevista_Chegada": lambda x: x.strftime("%d/%m") if pd.notna(x) else "—"
+        },
         row_class_fn=risk_row_class,
         max_height=360,
     ), unsafe_allow_html=True)
@@ -497,18 +507,18 @@ if len(top10) > 0:
     pior = top10.iloc[0]
     pior_cob = pior["Cobertura_Estoque_Dias"]
     pior_nome = pior["Nome_Produto"]
-    valor_risco = df_f[df_f["Cobertura_Estoque_Dias"] < 5]["Valor_Total_Estoque"].sum()
-    pct_risco = criticos / max(len(df_f), 1) * 100
+    # Cálculo do custo da demanda perdida por dia (Venda Média x Custo)
+    venda_risco_diario = (top10_base["Venda_Media_Diaria"] * top10_base["Custo_Unitario"]).sum()
     cats_risco = top10["Categoria"].value_counts()
-    cat_mais_risco = cats_risco.index[0]
+    cat_mais_risco = cats_risco.index[0] if not cats_risco.empty else "N/A"
 
     st.markdown(
-        f'<div class="exec-insight"><div class="ei-label">Resumo do Insight</div>'
-        f'<strong>{criticos}</strong> produtos ({pct_risco:.0f}% do total) operam com cobertura inferior a 2 dias, '
-        f'representando risco iminente de ruptura e perda de vendas. '
-        f'O item mais crítico é <strong>{pior_nome}</strong> com apenas <strong>{pior_cob:.1f} dia(s)</strong> de cobertura. '
-        f'A categoria <strong>{cat_mais_risco}</strong> concentra a maioria dos itens em zona de risco. '
-        f'O valor total em estoque sob risco (cobertura &lt; 5 dias) soma <strong>R$ {valor_risco:,.0f}</strong>.</div>',
+        f'<div class="exec-insight"><div class="ei-label">Prioridade de Ação — Top 10</div>'
+        f'Focando nos 10 itens de maior risco, identificamos que <strong>{criticos}</strong> operam com cobertura crítica (&lt; 2 dias), '
+        f'exigindo intervenção imediata para evitar ruptura prolongada. '
+        f'O item mais sensível é <strong>{pior_nome}</strong> ({pior_cob:.1f}d). '
+        f'O <strong>impacto diário (custo)</strong> por falta de estoque desses 10 itens soma <strong>R$ {venda_risco_diario:,.0f}</strong>. '
+        f'A categoria <strong>{cat_mais_risco}</strong> concentra a maior parte dessa urgência operacional.</div>',
         unsafe_allow_html=True,
     )
 
@@ -633,7 +643,8 @@ with c5a:
         st.plotly_chart(fig5, use_container_width=True)
 
 with c5b:
-    lt_cat = df_f.groupby("Categoria").agg(
+    # Focando o Lead Time apenas nos itens que estão em fluxo de reposição
+    lt_cat = df_rastr.groupby("Categoria").agg(
         Lead_Time_Medio=("Lead_Time_Fornecedor", "mean"),
         No_Prazo=("Status_Entrega", lambda x: (x == "No Prazo").sum()),
         Total=("ID_Produto", "count"),
@@ -646,7 +657,7 @@ with c5b:
         text=[f"{v:.0f}d" for v in lt_cat["Lead_Time_Medio"]],
         textposition="auto", textfont=dict(color=BRANCO, size=12),
     ))
-    fig6.update_layout(title=dict(text="Lead Time Médio por Categoria", font=dict(size=14, color=TEXTO2)),
+    fig6.update_layout(title=dict(text="Lead Time Médio (Itens em Reposição)", font=dict(size=14, color=TEXTO2)),
                        **PL, yaxis=ax("Dias"), xaxis=dict(title=""), height=280)
     st.plotly_chart(fig6, use_container_width=True)
 
@@ -675,21 +686,17 @@ with c5b:
 
 # Insight executivo — Previsão de Chegada
 atrasados_log = len(chegada[chegada["Status_Entrega"].isin(["Atrasado", "Critico"])])
-criticos_log = len(chegada[chegada["Status_Entrega"] == "Critico"])
-lt_max_cat = lt_cat["Lead_Time_Medio"].idxmax()
-lt_max_val = lt_cat.loc[lt_max_cat, "Lead_Time_Medio"]
-taxa_prazo_geral = df_f[df_f["Status_Entrega"] == "No Prazo"].shape[0] / max(len(df_f), 1) * 100
+valor_risco_chegada = chegada["Valor_Total_Estoque"].sum()
+lt_max_cat = lt_cat["Lead_Time_Medio"].idxmax() if not lt_cat.empty else "N/A"
+lt_max_val = lt_cat.loc[lt_max_cat, "Lead_Time_Medio"] if not lt_cat.empty else 0
 
 st.markdown(
-    f'<div class="exec-insight"><div class="ei-label">Resumo do Insight</div>'
-    f'Dos <strong>{len(chegada)}</strong> produtos com chegada prevista após 15/02/2026, '
-    f'<strong>{atrasados_log}</strong> apresentam status de atraso '
-    f'(sendo {criticos_log} em situação crítica). '
-    f'A categoria <strong>{lt_max_cat}</strong> possui o maior lead time médio '
-    f'(<strong>{lt_max_val:.0f} dias</strong>), o que eleva o risco de desabastecimento. '
-    f'A taxa geral de entregas no prazo é de <strong>{taxa_prazo_geral:.0f}%</strong> — '
-    + (f'abaixo do ideal para operação estável.' if taxa_prazo_geral < 70 else f'dentro de padrão aceitável, mas requer monitoramento contínuo.')
-    + '</div>',
+    f'<div class="exec-insight"><div class="ei-label">Análise de Risco de Abastecimento</div>'
+    f'Identificamos <strong>{len(chegada)} produtos</strong> com chegada prevista após o deadline de 15/02, '
+    f'dos quais <strong>{atrasados_log}</strong> já apresentam atraso logístico confirmado. '
+    f'O valor total em estoque desses itens sob risco é de <strong>R$ {valor_risco_chegada:,.0f}</strong>. '
+    f'A categoria <strong>{lt_max_cat}</strong> demanda maior atenção devido ao Lead Time elevado '
+    f'(média de <strong>{lt_max_val:.0f} dias</strong>), o que dificulta manobras rápidas de reposição.</div>',
     unsafe_allow_html=True,
 )
 
