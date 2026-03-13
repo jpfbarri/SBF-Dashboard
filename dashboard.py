@@ -419,30 +419,24 @@ with c2b:
 # Insight executivo — Capital por Categoria
 cat_maior = tabela_cat["Valor_Total"].idxmax()
 cat_maior_pct = tabela_cat.loc[cat_maior, "Participação (%)"]
-cat_maior_giro = tabela_cat.loc[cat_maior, "Venda_Total_R"]
-cat_menor_giro = tabela_cat["Venda_Total_R"].idxmin()
-cat_deficit = cat_estoque[cat_estoque["Estoque_Atual"] < cat_estoque["Estoque_Minimo"]]
+cat_giro_financeiro = tabela_cat.loc[cat_maior, "Venda_Total_R"]
+cat_menor_giro_nome = tabela_cat["Venda_Total_R"].idxmin()
+cat_menor_giro_val = tabela_cat.loc[cat_menor_giro_nome, "Venda_Total_R"]
 
 insight_capital = (
-    f'<div class="exec-insight"><div class="ei-label">Resumo do Insight</div>'
-    f'A categoria <strong>{cat_maior}</strong> concentra <strong>{cat_maior_pct:.0f}%</strong> '
-    f'do capital investido em estoque (R$ {tabela_cat.loc[cat_maior, "Valor_Total"]:,.0f}). '
+    f'<div class="exec-insight"><div class="ei-label">Análise de Eficiência de Capital</div>'
+    f'A categoria <strong>{cat_maior}</strong> detém <strong>{cat_maior_pct:.0f}%</strong> do capital imobilizado, '
+    f'mas apresenta um giro diário de R$ {cat_giro_financeiro:,.0f}, o que pode indicar um custo de oportunidade elevado se o shelf-life for baixo. '
+    f'Em contrapartida, <strong>{cat_menor_giro_nome}</strong> opera com giro crítico (R$ {cat_menor_giro_val:,.0f}/dia), '
+    f'exigindo revisão imediata de sortimento para evitar obsolescência.</div>'
 )
-if len(cat_deficit) > 0:
-    cats_list = cat_deficit.index.tolist()
-    cats_str = ", ".join(cats_list)
-    prefixo = "As categorias" if len(cats_list) > 1 else "A categoria"
-    verbo = "apresentam" if len(cats_list) > 1 else "apresenta"
-    insight_capital += (
-        f'{prefixo} <strong>{cats_str}</strong> {verbo} estoque total '
-        f'abaixo do mínimo necessário, indicando risco de ruptura agregado. '
-    )
-insight_capital += (
-    f'A categoria com menor giro financeiro é <strong>{cat_menor_giro}</strong> '
-    f'(R$ {tabela_cat.loc[cat_menor_giro, "Venda_Total_R"]:,.0f}/dia), '
-    f'sugerindo possível sobreestoque relativo.</div>'
+
+plano_acao_capital = (
+    f'<div class="action-plan"><div class="ap-label">🎯 Plano de Ação Recomendado</div>'
+    f'1. <strong>Otimização de Verba:</strong> Reduzir em 15% o orçamento de compra de {cat_menor_giro_nome} e realocar em categorias de maior tração.<br>'
+    f'2. <strong>Revisão de Estoque:</strong> Auditar níveis mínimos da categoria {cat_maior} para liberar fluxo de caixa sem penalizar o nível de serviço.</div>'
 )
-st.markdown(insight_capital, unsafe_allow_html=True)
+st.markdown(insight_capital + plano_acao_capital, unsafe_allow_html=True)
 
 
 # ── RISCO DE RUPTURA ────────────────────────────
@@ -525,19 +519,22 @@ if len(top10) > 0:
     pior = top10.iloc[0]
     pior_nome = pior["Nome_Produto"]
     em_ruptura = len(top10[top10["Estoque_Atual"] == 0])
-    # Cálculo do custo da demanda perdida por dia (Venda Média x Custo)
     venda_risco_diario = (top10_base["Venda_Media_Diaria"] * top10_base["Custo_Unitario"]).sum()
-    cats_risco = top10["Categoria"].value_counts()
-    cat_mais_risco = cats_risco.index[0] if not cats_risco.empty else "N/A"
+    sem_previsao = len(top10[top10["Exibicao_Chegada"] == "Sem previsão"])
 
-    st.markdown(
-        f'<div class="exec-insight"><div class="ei-label">Prioridade de Ação — Top 10</div>'
-        f'A análise dos 10 itens de maior urgência revela que <strong>{em_ruptura}</strong> já se encontram em <strong>RUPTURA</strong>, '
-        f'interrompendo o ciclo de vendas e atendimento. O caso mais grave é <strong>{pior_nome}</strong>. '
-        f'Esta indisponibilidade acumula um <strong>prejuízo diário estimado em R$ {venda_risco_diario:,.0f}</strong> (custo). '
-        f'A categoria <strong>{cat_mais_risco}</strong> concentra a maior parte desta perda de receita potencial.</div>',
-        unsafe_allow_html=True,
+    insight_ruptura = (
+        f'<div class="exec-insight"><div class="ei-label">Diagnóstico de Disponibilidade</div>'
+        f'A ruptura atual em <strong>{em_ruptura} itens</strong> do Top 10 gera uma perda direta de margem estimada em '
+        f'<strong>R$ {venda_risco_diario:,.0f}/dia</strong>. A gravidade é acentuada por <strong>{sem_previsao} itens sem qualquer previsão '
+        f'de chegada</strong>, criando um "apagão" de visibilidade na cadeia de suprimentos.</div>'
     )
+    
+    plano_acao_ruptura = (
+        f'<div class="action-plan"><div class="ap-label">🚨 Plano de Ação Recomendado</div>'
+        f'1. <strong>Força-Tarefa Logística:</strong> Obter status de embarque para os itens "Sem previsão" nas próximas 24h.<br>'
+        f'2. <strong>Priorização de Carga:</strong> Ativar frete expresso para o item <strong>{pior_nome}</strong> visando estancar a perda diária de receita.</div>'
+    )
+    st.markdown(insight_ruptura + plano_acao_ruptura, unsafe_allow_html=True)
 
 
 # ── PARETO ──────────────────────────────────────
@@ -595,13 +592,18 @@ with c4b:
 
 # Insight executivo — Concentração Curva A (Top 20% budget)
 top1 = df_p.iloc[0]
-st.markdown(
-    f'<div class="exec-insight"><div class="ei-label">Resumo do Insight Corporativo</div>'
-    f'Focando na hiper-concentração de capital, identificamos que a "Ponta do Iceberg" compreende apenas <strong>{len(curva_a)} produto(s)</strong> '
-    f'({pct_skus:.1f}% do portfólio), mas que sozinhos retêm pesados <strong>20% de todo o caixa estocado</strong> (R$ {v20:,.0f}). '
-    f'O item líder é <strong>{top1["Nome_Produto"]}</strong>.</div>',
-    unsafe_allow_html=True,
+insight_pareto = (
+    f'<div class="exec-insight"><div class="ei-label">Foco Gerencial Estratégico</div>'
+    f'Apenas <strong>{len(curva_a)} SKU(s)</strong> controlam 20% da liquidez do seu estoque. Qualquer erro de acurácia nestes itens '
+    f'impacta desproporcionalmente o balanço financeiro. O item <strong>{top1["Nome_Produto"]}</strong> é o principal detentor de capital.</div>'
 )
+
+plano_acao_pareto = (
+    f'<div class="action-plan"><div class="ap-label">🛡️ Plano de Ação Recomendado</div>'
+    f'1. <strong>Controle de Ciclo:</strong> Implementar contagem cíclica semanal obrigatória para estes {len(curva_a)} itens.<br>'
+    f'2. <strong>SLA de Fornecedor:</strong> Renegociar lead times e lotes mínimos especificamente para este grupo para aumentar a agilidade financeira.</div>'
+)
+st.markdown(insight_pareto + plano_acao_pareto, unsafe_allow_html=True)
 
 
 # ── PREVISÃO DE CHEGADA ─────────────────────────
@@ -707,22 +709,25 @@ valor_risco_chegada = chegada["Valor_Total_Estoque"].sum()
 lt_max_cat = lt_cat["Lead_Time_Medio"].idxmax() if not lt_cat.empty else "N/A"
 lt_max_val = lt_cat.loc[lt_max_cat, "Lead_Time_Medio"] if not lt_cat.empty else 0
 
-st.markdown(
-    f'<div class="exec-insight"><div class="ei-label">Análise de Risco de Abastecimento</div>'
-    f'Identificamos <strong>{len(chegada)} produtos</strong> com chegada prevista após o deadline de 15/02, '
-    f'dos quais <strong>{atrasados_log}</strong> já apresentam atraso logístico confirmado. '
-    f'O valor total em estoque desses itens sob risco é de <strong>R$ {valor_risco_chegada:,.0f}</strong>. '
-    f'A categoria <strong>{lt_max_cat}</strong> demanda maior atenção devido ao Lead Time elevado '
-    f'(média de <strong>{lt_max_val:.0f} dias</strong>), o que dificulta manobras rápidas de reposição.</div>',
-    unsafe_allow_html=True,
+insight_chegada = (
+    f'<div class="exec-insight"><div class="ei-label">Risco de Abastecimento Futuro</div>'
+    f'O bloqueio de <strong>R$ {valor_risco_chegada:,.0f}</strong> em itens com entrega pós-deadline ou em atraso '
+    f'compromete a renovação do estoque. A dependência de <strong>{lt_max_cat}</strong> (Lead Time de {lt_max_val:.1f} dias) '
+    f'é o maior gargalo para a recuperação rápida dos níveis de serviço.</div>'
 )
+
+plano_acao_chegada = (
+    f'<div class="action-plan"><div class="ap-label">📋 Plano de Ação Recomendado</div>'
+    f'1. <strong>Homologação de Fornecedores:</strong> Buscar alternativas locais para reduzir o LT de <strong>{lt_max_cat}</strong>.<br>'
+    f'2. <strong>Contigência:</strong> Avaliar transferência de estoque entre unidades para cobrir o gap logístico dos itens em atraso.</div>'
+)
+st.markdown(insight_chegada + plano_acao_chegada, unsafe_allow_html=True)
 
 
 # ── FOOTER ──────────────────────────────────────
 st.markdown(
     f'<div style="text-align:center;color:{TEXTO2};font-size:0.75rem;padding:24px 0 12px 0;'
     f'border-top:1px solid {BORDA};margin-top:32px;">'
-    f'SBF Inventário · Python · Pandas · Streamlit · Plotly · '
-    f'Atualizado em {datetime.now().strftime("%d/%m/%Y às %H:%M")}</div>',
+    f'SBF Inventário · Python · Pandas · Streamlit · Plotly</div>',
     unsafe_allow_html=True,
 )
